@@ -235,6 +235,25 @@ namespace TelegramBOt
             EndGame(result);
             return true;
         }
+        private static void CreateNewGame(Message message)
+        {
+            Message gameMessage = bot.SendMessage(message.Chat.Id, "@" + message.From.Username.ToString() + " вызывает на дуэль в крестики-нолики", replyMarkup: ticTacToeInvite);
+            if (gameMessage != null)
+            {
+                using (ApplicationContext db = new ApplicationContext())
+                {
+                    TicTacToeGame newGame = new TicTacToeGame()
+                    {
+                        Message = message,
+                        Player1 = message.From,
+                        Map = new TicTacToeMap(3, 3, 3)
+                    };
+                    db.Add(newGame);
+                    db.SaveChanges();
+                }
+            }
+        }
+        
         private static void EndGame(int winner)
         {
             string winText = "default value";
