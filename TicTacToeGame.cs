@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,13 +10,13 @@ namespace TelegramBOt
 {
     internal class TicTacToeGame
     {
-        public int Id { get; set; }
-        public User Player1 { get; set; }
-        public User Player2 { get; set; }
-        public int CurrentPlayer { get; set; }
-        public bool FlipWinner { get; set; }
-        public bool Going { get; set; } = true;
+        [Key]
         public Message Message { get; set; }
-        public TicTacToeMap Map;
+        public User Player1 { get; set; }
+        public User? Player2 { get; set; }
+        public int CurrentPlayer { get; set; } = 0;
+        public bool? FlipWinner { get; set; }
+        public bool Going { get; set; } = false;
+        public TicTacToeMap Map { get; set; }
     }
 }

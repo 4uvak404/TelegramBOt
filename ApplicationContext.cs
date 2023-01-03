@@ -9,8 +9,8 @@ namespace TelegramBOt
 {
     internal class ApplicationContext : DbContext
     {
-        DbSet<TicTacToeGame> Games => Set<TicTacToeGame>();
-        ApplicationContext() => Database.EnsureCreated();
+        internal DbSet<TicTacToeGame> TicTacToeGames => Set<TicTacToeGame>();
+        internal ApplicationContext() => Database.EnsureCreated();
         protected override void OnConfiguring (DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.UseSqlite("Data Source=TelegramBotDB");

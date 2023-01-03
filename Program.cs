@@ -1,9 +1,12 @@
 ﻿using System.Data.Common;
+using System.Reflection;
 using Telegram.BotAPI;
 using Telegram.BotAPI.AvailableMethods;
 using Telegram.BotAPI.AvailableTypes;
+using Telegram.BotAPI.Games;
 using Telegram.BotAPI.GettingUpdates;
 using Telegram.BotAPI.UpdatingMessages;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace TelegramBOt
 {
@@ -11,12 +14,6 @@ namespace TelegramBOt
     {
         private readonly static string botToken = "5911163182:AAGCzUiymm5wDjMcRi3-UdTTzBv5QX_0nz0";
         private static BotClient bot;
-        private static User player1, player2;
-        private static int currentPlayer;
-        private static bool gameGoing = false;
-        private static Message gameMessage;
-        private static TicTacToeMap map;
-        private static bool flipWinner;
 
         private static InlineKeyboardMarkup ticTacToeInvite = new InlineKeyboardMarkup
         {
@@ -75,19 +72,7 @@ namespace TelegramBOt
 
                                 if (message.Text.Contains("/tictactoe"))
                                 {
-                                    if (!gameGoing)
-                                    {
-                                        gameMessage = bot.SendMessage(chatId, "@" + sender.Username.ToString() + " вызывает на дуэль в крестики-нолики", replyMarkup: ticTacToeInvite);
-                                        if (gameMessage != null)
-                                        {
-                                            player1 = sender;
-                                            map = new TicTacToeMap(12, 8, 3);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        bot.SendMessageAsync(chatId, "Игра уже идёт, я не могу за двумя играми сразу следить");
-                                    }
+                                    CreateNewGame(message);
                                 }
                                 else if (message.Text.Contains("/command"))
                                 {
@@ -102,53 +87,61 @@ namespace TelegramBOt
 
                                 Console.WriteLine($"Прислали ответ: {query.Data}");
 
-                                if (gameGoing && query.Message.MessageId == gameMessage.MessageId)
+                                using (ApplicationContext db = new ApplicationContext())
                                 {
-                                    int row = int.Parse(query.Data.Split(',')[0]);
-                                    int column = int.Parse(query.Data.Split(',')[1]);
-                                    if (currentPlayer == 0)
+                                    TicTacToeGame? game = db.TicTacToeGames.Find(query.Message);
+                                    if (game == null)
                                     {
-                                        if(sender == player1)
-                                        {
-                                            currentPlayer = 1;
-                                            flipWinner = false;
-                                        }
-                                        else if (sender == player2)
-                                        {
-                                            currentPlayer = 2;
-                                            flipWinner = true;
-                                        }
+                                        bot.AnswerCallbackQuery(query.Id, "Игра не найдена");
+                                         break;
                                     }
-                                    if (currentPlayer == 1 && sender == player1)
+                                    if (!game.Going)
                                     {
-                                        if (!MakeTurn(row, column))
-                                        {
-                                            bot.AnswerCallbackQuery(query.Id);
-                                        }
-                                    }
-                                    else if (currentPlayer == 2 && sender == player2)
-                                    {
-                                        if (!MakeTurn(row, column))
-                                        {
-                                            bot.AnswerCallbackQuery(query.Id);
-                                        }
+                                        bot.AnswerCallbackQuery(query.Id, "Игра не активна");
+                                        break;
                                     }
                                     else
                                     {
-                                        bot.AnswerCallbackQuery(query.Id, "Сейчас не ваш ход");
+                                        int row = int.Parse(query.Data.Split(',')[0]);
+                                        int column = int.Parse(query.Data.Split(',')[1]);
+                                        if (game.CurrentPlayer == 0)
+                                        {
+                                            if (sender == game.Player1)
+                                            {
+                                                game.CurrentPlayer = 1;
+                                                game.FlipWinner = false;
+                                            }
+                                            else if (sender == game.Player2)
+                                            {
+                                                game.CurrentPlayer = 2;
+                                                game.FlipWinner = true;
+                                            }
+                                            db.TicTacToeGames.Update(game);
+                                            db.SaveChanges();
+                                        }
+                                        if (game.CurrentPlayer == 1 && sender == game.Player1 || game.CurrentPlayer == 2 && sender == game.Player2)
+                                        {
+                                            game = MakeTurn(row, column, game);
+                                            if (game != null)
+                                            {
+                                                db.TicTacToeGames.Update(game);
+                                                db.SaveChanges();
+                                            }
+                                            else
+                                            {
+                                                bot.AnswerCallbackQuery(query.Id);
+                                            }
+                                            
+                                        }
+                                        else
+                                        {
+                                            bot.AnswerCallbackQuery(query.Id, "Сейчас не ваш ход");
+                                        }
                                     }
-                                    
                                 }
                                 if (query.Data == "accept_game")
                                 {
-                                    if (!gameGoing)
-                                    {
-                                        StartGame(query.From);
-                                    }
-                                    else
-                                    {
-                                        bot.AnswerCallbackQueryAsync(query.Id, "Игра уже началась");
-                                    }
+                                    StartGame(query);
                                 }
                                 break;
                         }
@@ -190,50 +183,84 @@ namespace TelegramBOt
             }
             return new InlineKeyboardMarkup(markupButtons);
         }
-        private static void StartGame(User playerTwo)
+        private static bool StartGame(CallbackQuery query)
         {
-            gameGoing = true;
-            currentPlayer = 0;
-            player2 = playerTwo;
-            bot.EditMessageText(new EditMessageTextArgs
+            using (ApplicationContext db = new ApplicationContext())
             {
-                ChatId = gameMessage.Chat.Id,
-                MessageId = gameMessage.MessageId,
-                Text = $"@{player1.Username} против @{player2.Username} сейчас ход {currentPlayer}",
-                ReplyMarkup = MakeTictactoeKeyboardMarkup(map.Values)
-            });
-        }
-        private static bool MakeTurn(int row, int column)
-        {
-            if (!map.SetElement(row, column))
-            {
-                return false;
+                TicTacToeGame? game = db.TicTacToeGames.Find(query.Message);
+                if (game == null)
+                {
+                    bot.AnswerCallbackQuery(query.Id, "Игра не найдена");
+                    return false;
+                }
+                if (game.Going)
+                {
+                    bot.AnswerCallbackQuery(query.Id, "Игра уже началась");
+                    return false;
+                }
+                else
+                {
+                    game.Going = true;
+                    game.CurrentPlayer = 0;
+                    game.Player2 = query.From;
+                    bot.EditMessageText(new EditMessageTextArgs
+                    {
+                        ChatId = game.Message.Chat.Id,
+                        MessageId = game.Message.MessageId,
+                        Text = $"@{game.Player1.Username} против @{game.Player2.Username} сейчас ход {game.CurrentPlayer}",
+                        ReplyMarkup = MakeTictactoeKeyboardMarkup(game.Map.Values)
+                    });
+                    db.TicTacToeGames.Update(game);
+                    db.SaveChanges();
+                    return true;
+                }
             }
-            int result = map.CheckWin();
+        }
+        //private static TicTacToeGame? GetGameFromQuery(CallbackQuery query, ApplicationContext db)
+        //{
+        //    TicTacToeGame? game = db.TicTacToeGames.Find(query.Message);
+        //    if (game == null)
+        //    {
+        //        bot.AnswerCallbackQuery(query.Id, "Игра не найдена");
+        //        return null;
+        //    }
+        //    else if (!game.Going)
+        //    {
+
+        //    }
+        //}
+        private static TicTacToeGame? MakeTurn(int row, int column, TicTacToeGame game)
+        {
+            if (!game.Map.SetElement(row, column))
+            {
+                return null;
+            }
+            int result = game.Map.CheckWin();
 
             if (!(result >= -1 && result <= 2))
             {
-                return true;
+                return null;
             }
 
             if (result == 0)
             {
-                currentPlayer = FlipPlayer(currentPlayer);
+                game.CurrentPlayer = FlipPlayer(game.CurrentPlayer);
                 bot.EditMessageText(new EditMessageTextArgs
                 {
-                    ChatId = gameMessage.Chat.Id,
-                    MessageId = gameMessage.MessageId,
-                    Text = $"@{player1.Username} против @{player2.Username} сейчас ход {currentPlayer}",
-                    ReplyMarkup = MakeTictactoeKeyboardMarkup(map.Values)
+                    ChatId = game.Message.Chat.Id,
+                    MessageId = game.Message.MessageId,
+                    Text = $"@{game.Player1.Username} против @{game.Player2.Username} сейчас ход {game.CurrentPlayer}",
+                    ReplyMarkup = MakeTictactoeKeyboardMarkup(game.Map.Values)
                 });
-                return true;
+                return game;
             }
-            if (flipWinner)
+            if ((bool)game.FlipWinner)
             {
                 result = FlipPlayer(result);
             }
-            EndGame(result);
-            return true;
+            game = EndGame(game, result);
+            return game;
+            
         }
         private static void CreateNewGame(Message message)
         {
@@ -248,29 +275,28 @@ namespace TelegramBOt
                         Player1 = message.From,
                         Map = new TicTacToeMap(3, 3, 3)
                     };
-                    db.Add(newGame);
+                    db.TicTacToeGames.Add(newGame);
                     db.SaveChanges();
                 }
             }
         }
-        
-        private static void EndGame(int winner)
+
+        private static TicTacToeGame EndGame(TicTacToeGame game, int winner)
         {
             string winText = "default value";
             if (winner == -1) winText = "Ничья, никто не подбедил";
-            if (winner == 1) winText = $"Победил @{player1.Username} ({winner})";
-            if (winner == 2) winText = $"Победил @{player2.Username} ({winner})";
+            if (winner == 1) winText = $"Победил @{game.Player1.Username} ({winner})";
+            if (winner == 2) winText = $"Победил @{game.Player2.Username} ({winner})";
             bot.EditMessageText(new EditMessageTextArgs
             {
-                ChatId = gameMessage.Chat.Id,
-                MessageId = gameMessage.MessageId,
+                ChatId = game.Message.Chat.Id,
+                MessageId = game.Message.MessageId,
                 Text = winText,
-                ReplyMarkup = MakeTictactoeKeyboardMarkup(map.Values)
+                ReplyMarkup = MakeTictactoeKeyboardMarkup(game.Map.Values)
             });
-            gameGoing = false;
-            currentPlayer = 0;
-            player1 = null;
-            player2 = null;
+            game.Going = false;
+            game.CurrentPlayer = 0;
+            return game;
         }
         private static int FlipPlayer(int player)
         {
