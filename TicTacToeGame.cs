@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -8,15 +9,19 @@ using Telegram.BotAPI.AvailableTypes;
 
 namespace TelegramBOt
 {
+    [PrimaryKey(nameof(ChatId), nameof(MessageId))]
     internal class TicTacToeGame
     {
-        [Key]
-        public Message Message { get; set; }
-        public User Player1 { get; set; }
-        public User? Player2 { get; set; }
+        public long ChatId { get; set; }
+        public int MessageId { get; set; }
+        public long Player1Id { get; set; }
+        public string Player1Username { get; set; }
+        public long? Player2Id { get; set; }
+        public string? Player2Username { get; set; }
         public int CurrentPlayer { get; set; } = 0;
         public bool? FlipWinner { get; set; }
         public bool Going { get; set; } = false;
+        public int TicTacToeMapId { get; set; }
         public TicTacToeMap Map { get; set; }
     }
 }

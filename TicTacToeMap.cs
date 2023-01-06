@@ -1,23 +1,68 @@
 ﻿using System;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Sqlite;
+using Microsoft.EntityFrameworkCore.ValueGeneration.Internal;
 
 namespace TelegramBOt
 {
     internal class TicTacToeMap
     {
-        private int[,] values;
-        private int height, width, turn;
-        private int onesInARowMax, twosInARowMax;
-        private int onesInARow, twosInARow;
         private int winLength = 3;
-
-        public int[,] Values { get { return values; } }
+        public int Id { get; set; }
+        public string StupidStringValue { get; set; }
+        [NotMapped]
+        public int[,] Values 
+        {
+            get
+            {
+                string[] temp = StupidStringValue.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                int[,] values = new int[height, width];
+                for (int i = 0; i < height; i++)
+                {
+                    string[] temp2 = temp[i].Split(' ');
+                    for (int j = 0; j < width; j++)
+                    {
+                        values[i, j] = int.Parse(temp2[j]);
+                    }
+                }
+                
+                return values;
+            }
+            set
+            {
+                StupidStringValue = "";
+                int counter = 0;
+                for (int i = 0; i < height; i++)
+                {
+                    for (int j = 0; j < width; j++)
+                    {
+                        if (j == width - 1)
+                        {
+                            StupidStringValue += value[i, j].ToString() + "\n";
+                        }
+                        else
+                        {
+                            StupidStringValue += value[i, j].ToString() + " ";
+                        }
+                    }
+                }
+            }
+        }
+        public int height { get; set; }
+        public int width { get; set; }
+        public int turn { get; set; }
+        private int onesInARowMax { get; set; }
+        private int twosInARowMax { get; set; }
+        private int onesInARow { get; set; }
+        private int twosInARow { get; set; }
         public int WinLength
         {
             get { return winLength; }
@@ -27,20 +72,23 @@ namespace TelegramBOt
                 if (value <= min) winLength = value;
             }
         }
-
+        private TicTacToeMap() { }
         public TicTacToeMap(int height, int width, int winLength)
         {
-            values = new int[height, width];
             this.height = height;
             this.width = width;
             WinLength = winLength;
             turn = 0;
+            Values = new int[height, width];
         }
         public bool SetElement(int row, int column)
         {
-            if (values[row, column] == 0)
+            
+            if (Values[row, column] == 0)
             {
-                values[row, column] = turn % 2 == 0 ? 1 : 2;
+                int[,] temp = Values;
+                temp[row, column] = turn % 2 == 0 ? 1 : 2;
+                Values = temp;
                 turn++;
                 return true;
             }
@@ -57,7 +105,7 @@ namespace TelegramBOt
                 twosInARow = 0;
                 for (int j = 0 ; j < width; j++)
                 {
-                    CheckOnesAndTwos(values[i, j]);
+                    CheckOnesAndTwos(Values[i, j]);
                 }
                 if (onesInARowMax >= winLength) return 1;
                 if (twosInARowMax >= winLength) return 2;
@@ -68,7 +116,7 @@ namespace TelegramBOt
                 twosInARow = 0;
                 for (int i = 0; i < height; i++)
                 {
-                    CheckOnesAndTwos(values[i, j]);
+                    CheckOnesAndTwos(Values[i, j]);
                 }
                 if (onesInARowMax >= winLength) return 1;
                 if (twosInARowMax >= winLength) return 2;
@@ -102,7 +150,7 @@ namespace TelegramBOt
         }
         public void Reset()
         {
-            values = new int[height,width];
+            Values = new int[height,width];
         }
         private void CountDiagonalRight(int row, int column)
         {
@@ -111,7 +159,7 @@ namespace TelegramBOt
             int min = Math.Min(height - row, width - column);
             for (int i = 0; i < min; i++)
             {
-                CheckOnesAndTwos(values[row + i, column + i]);
+                CheckOnesAndTwos(Values[row + i, column + i]);
             }
         }
         private void CountDiagonalLeft(int row, int column)
@@ -121,7 +169,7 @@ namespace TelegramBOt
             int min = Math.Min(height - row, column + 1);
             for (int i = 0; i < min; i++)
             {
-                CheckOnesAndTwos(values[row + i, column - i]);
+                CheckOnesAndTwos(Values[row + i, column - i]);
             }
         }
         private void CheckOnesAndTwos(int value)
