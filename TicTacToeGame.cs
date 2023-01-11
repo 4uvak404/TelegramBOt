@@ -20,7 +20,7 @@ namespace TelegramBOt
         public string? Player2Username { get; set; }
         public int CurrentPlayer { get; set; } = 0;
         public bool? FlipWinner { get; set; }
-        public bool Going { get; set; } = false;
+        public int State { get; set; } = 0;
         public int TicTacToeMapId { get; set; }
         public TicTacToeMap Map { get; set; }
         public void EndGame(TicTacToeGame game, int winner)
@@ -29,7 +29,7 @@ namespace TelegramBOt
             if (winner == -1) winText = "Ничья, никто не победил";
             if (winner == 1) winText = $"Победил @{game.Player1Username} ({winner})";
             if (winner == 2) winText = $"Победил @{game.Player2Username} ({winner})";
-            game.Going = false;
+            game.State = 2;
             game.CurrentPlayer = 0;
         }
         public bool MakeTurn(int row, int column, TicTacToeGame game)

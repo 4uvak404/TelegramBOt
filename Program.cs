@@ -95,7 +95,7 @@ namespace TelegramBOt
                                          bot.AnswerCallbackQuery(query.Id, "Игра не найдена");
                                          break;
                                     }
-                                    if (!game.Going)
+                                    if (game.State == 2)
                                     {
                                         bot.AnswerCallbackQuery(query.Id, "Игра не активна");
                                         break;
@@ -190,14 +190,14 @@ namespace TelegramBOt
                     bot.AnswerCallbackQuery(query.Id, "Игра не найдена");
                     return false;
                 }
-                if (game.Going)
+                if (game.State == 1)
                 {
                     bot.AnswerCallbackQuery(query.Id, "Игра уже началась");
                     return false;
                 }
                 else
                 {
-                    game.Going = true;
+                    game.State = 1;
                     game.CurrentPlayer = 0;
                     game.Player2Id = query.From.Id;
                     game.Player2Username = query.From.Username;
@@ -295,7 +295,7 @@ namespace TelegramBOt
                 Text = winText,
                 ReplyMarkup = MakeTictactoeKeyboardMarkup(game.Map.Values)
             });
-            game.Going = false;
+            game.State = 2;
             game.CurrentPlayer = 0;
             return game;
         }
