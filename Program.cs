@@ -24,23 +24,17 @@ namespace TelegramBOt
                 }
             }
         };
-        private static InlineKeyboardMarkup ticTacToeGame = new InlineKeyboardMarkup
+        private static InlineKeyboardMarkup ticTacToeSettingsMarkup = new InlineKeyboardMarkup
         {
             InlineKeyboard = new InlineKeyboardButton[][]{
                 new InlineKeyboardButton[]{
-                InlineKeyboardButton.SetCallbackData("Callback1", "1"),
-                    InlineKeyboardButton.SetCallbackData("Callback1", "2"),
-                    InlineKeyboardButton.SetCallbackData("Callback1", "3")
+                InlineKeyboardButton.SetCallbackData("Размер поля", "change_map_size")
                 },
                 new InlineKeyboardButton[]{
-                InlineKeyboardButton.SetCallbackData("Callback1", "4"),
-                    InlineKeyboardButton.SetCallbackData("Callback1", "5"),
-                    InlineKeyboardButton.SetCallbackData("Callback1", "6")
+                InlineKeyboardButton.SetCallbackData("Кол-во крестиков/ноликов для победы", "change_win_number")
                 },
                 new InlineKeyboardButton[]{
-                InlineKeyboardButton.SetCallbackData("Callback1", "7"),
-                    InlineKeyboardButton.SetCallbackData("Callback1", "8"),
-                    InlineKeyboardButton.SetCallbackData("Callback1", "9")
+                InlineKeyboardButton.SetCallbackData("Вид крестиков/ноликов", "change_apperance")
                 }
             }
         };
