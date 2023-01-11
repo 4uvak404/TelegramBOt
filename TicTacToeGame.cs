@@ -23,5 +23,11 @@ namespace TelegramBOt
         public bool Going { get; set; } = false;
         public int TicTacToeMapId { get; set; }
         public TicTacToeMap Map { get; set; }
+        public static int FlipPlayer(int player)
+        {
+            if (player == 1) return 2;
+            else if (player == 2) return 1;
+            else return player;
+        }
     }
 }

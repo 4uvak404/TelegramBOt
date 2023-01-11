@@ -243,7 +243,7 @@ namespace TelegramBOt
 
             if (result == 0)
             {
-                game.CurrentPlayer = FlipPlayer(game.CurrentPlayer);
+                game.CurrentPlayer = TicTacToeGame.FlipPlayer(game.CurrentPlayer);
                 bot.EditMessageText(new EditMessageTextArgs
                 {
                     ChatId = game.ChatId,
@@ -255,7 +255,7 @@ namespace TelegramBOt
             }
             if ((bool)game.FlipWinner!)
             {
-                result = FlipPlayer(result);
+                result = TicTacToeGame.FlipPlayer(result);
             }
             game = EndGame(game, result);
             return game;
@@ -298,12 +298,6 @@ namespace TelegramBOt
             game.Going = false;
             game.CurrentPlayer = 0;
             return game;
-        }
-        private static int FlipPlayer(int player)
-        {
-            if (player == 1) return 2;
-            else if (player == 2) return 1;
-            else return player;
         }
     }
 }
