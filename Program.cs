@@ -51,95 +51,15 @@ namespace TelegramBOt
                 {
                     foreach(var update in updates )
                     {
-                        User sender;
                         switch (update.Type)
                         {
                             case UpdateType.Message:
                                 var message = update.Message;
-                                if (message.Text == null)
-                                {
-                                    break;
-                                }
-                                long chatId = message.Chat.Id;
-                                sender = message.From;
-                                
-                                Console.WriteLine($"Прислали сообщение с текстом {message.Text}");
-
-                                if (message.Text.Contains("/tictactoe"))
-                                {
-                                    CreateNewGame(message);
-                                }
-                                else if (message.Text.Contains("/command"))
-                                {
-                                    //var markup1 = MakeTictactoeKeyboardMarkup(new int[,] { { 0, 0, 0 }, { 1, 1, 1 }, { 2, 2, 2 } });
-                                }
-                                //bot.SendMessageAsync(chatId, $"Ты зачем мне это прислал?", replyToMessageId: message.MessageId);
+                                OnMessage(message);
                                 break;
-
                             case UpdateType.CallbackQuery:
                                 var query = update.CallbackQuery;
-                                sender = query.From;
-
-                                Console.WriteLine($"Прислали ответ: {query.Data}");
-
-                                if (query.Data == "accept_game")
-                                {
-                                    StartGame(query);
-                                    break;
-                                }
-                                using (ApplicationContext db = new ApplicationContext())
-                                {
-                                    TicTacToeGame? game = db.TicTacToeGames.Find(query.Message.Chat.Id, query.Message.MessageId);
-                                    if (game == null)
-                                    {
-                                         bot.AnswerCallbackQuery(query.Id, "Игра не найдена");
-                                         break;
-                                    }
-                                    if (game.State == 2)
-                                    {
-                                        bot.AnswerCallbackQuery(query.Id, "Игра не активна");
-                                        break;
-                                    }
-                                    else
-                                    {
-                                        int row = int.Parse(query.Data.Split(',')[0]);
-                                        int column = int.Parse(query.Data.Split(',')[1]);
-                                        if (game.CurrentPlayer == 0)
-                                        {
-                                            if (sender.Id == game.Player1Id)
-                                            {
-                                                game.CurrentPlayer = 1;
-                                                game.FlipWinner = false;
-                                            }
-                                            else if (sender.Id == game.Player2Id)
-                                            {
-                                                game.CurrentPlayer = 2;
-                                                game.FlipWinner = true;
-                                            }
-                                            db.TicTacToeGames.Update(game);
-                                            db.SaveChanges();
-                                        }
-                                        if (game.CurrentPlayer == 1 && sender.Id == game.Player1Id || game.CurrentPlayer == 2 && sender.Id == game.Player2Id)
-                                        {
-                                            db.TicTacToeMaps.Where(map => map.Id == game.TicTacToeMapId).Load();
-                                            game = MakeTurn(row, column, game);
-                                            if (game != null)
-                                            {
-                                                db.TicTacToeGames.Update(game);
-                                                db.SaveChanges();
-                                            }
-                                            else
-                                            {
-                                                bot.AnswerCallbackQuery(query.Id);
-                                            }
-                                            
-                                        }
-                                        else
-                                        {
-                                            bot.AnswerCallbackQuery(query.Id, "Сейчас не ваш ход");
-                                        }
-                                    }
-                                }
+                                OnCallback(query);
                                 break;
                         }
                     }
@@ -149,6 +69,93 @@ namespace TelegramBOt
                 else
                 {
                     updates = bot.GetUpdates();
+                }
+            }
+        }
+        private static void OnMessage(Message message)
+        {
+            User sender;
+            if (message.Text == null)
+            {
+                return;
+            }
+            long chatId = message.Chat.Id;
+            sender = message.From;
+
+            Console.WriteLine($"Прислали сообщение с текстом {message.Text}");
+
+            if (message.Text.Contains("/tictactoe"))
+            {
+                CreateNewGame(message);
+            }
+            else if (message.Text.Contains("/command"))
+            {
+                //var markup1 = MakeTictactoeKeyboardMarkup(new int[,] { { 0, 0, 0 }, { 1, 1, 1 }, { 2, 2, 2 } });
+            }
+            //bot.SendMessageAsync(chatId, $"Ты зачем мне это прислал?", replyToMessageId: message.MessageId);
+        }
+        private static void OnCallback(CallbackQuery query)
+        {
+            User sender = query.From;
+
+            Console.WriteLine($"Прислали ответ: {query.Data}");
+
+            if (query.Data == "accept_game")
+            {
+                StartGame(query);
+                return;
+            }
+            using (ApplicationContext db = new ApplicationContext())
+            {
+                TicTacToeGame? game = db.TicTacToeGames.Find(query.Message.Chat.Id, query.Message.MessageId);
+                if (game == null)
+                {
+                    bot.AnswerCallbackQuery(query.Id, "Игра не найдена");
+                    return;
+                }
+                if (game.State == 2)
+                {
+                    bot.AnswerCallbackQuery(query.Id, "Игра не активна");
+                    return;
+                }
+                else
+                {
+                    int row = int.Parse(query.Data.Split(',')[0]);
+                    int column = int.Parse(query.Data.Split(',')[1]);
+                    if (game.CurrentPlayer == 0)
+                    {
+                        if (sender.Id == game.Player1Id)
+                        {
+                            game.CurrentPlayer = 1;
+                            game.FlipWinner = false;
+                        }
+                        else if (sender.Id == game.Player2Id)
+                        {
+                            game.CurrentPlayer = 2;
+                            game.FlipWinner = true;
+                        }
+                        db.TicTacToeGames.Update(game);
+                        db.SaveChanges();
+                    }
+                    if (game.CurrentPlayer == 1 && sender.Id == game.Player1Id || game.CurrentPlayer == 2 && sender.Id == game.Player2Id)
+                    {
+                        db.TicTacToeMaps.Where(map => map.Id == game.TicTacToeMapId).Load();
+                        game = MakeTurn(row, column, game);
+                        if (game != null)
+                        {
+                            db.TicTacToeGames.Update(game);
+                            db.SaveChanges();
+                        }
+                        else
+                        {
+                            bot.AnswerCallbackQuery(query.Id);
+                        }
+
+                    }
+                    else
+                    {
+                        bot.AnswerCallbackQuery(query.Id, "Сейчас не ваш ход");
+                    }
                 }
             }
         }
